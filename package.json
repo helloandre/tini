@@ -1,0 +1,19 @@
+{
+  "name": "@helloandre/tini",
+  "version": "0.1.0",
+  "description": "A Tini Web Framework",
+  "main": "src/index.js",
+  "repository": "github.com/helloandre/tini",
+  "author": "Andre Bluehs <hello@andre.blue>",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.js",
+    "size": "ls -la dist/index.min.js",
+    "test": "yarn build && yarn size && mocha test/index.js --exit"
+  },
+  "devDependencies": {
+    "babel-minify": "^0.5.0",
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0"
+  }
+}
