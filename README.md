@@ -2,46 +2,111 @@
 
 A tiny web framework
 
-# Usage
+# Installation
+
+there are two options:
+
+- copy/paste `dist/index.min.js` directly into your code, which will expose the `tini` variable to your script
+- `npm i @helloandre/tini`
+
+# API
+
+### tini(fn)
+
+a function that expects a function as it's only parameter, and is passed an object containing the routing api.
 
 ```
-// handle a GET request
-// also supports
-// - .post
-// - .put
-// - .del
-t.get('/my/get/route/:myParam',
-  // middleware to process requests
-  // the fist non-undefined return value is used as the response
-  // this return value can come from any function in the chain
-  req => {
-    req.intermediateValue = 'somevalue';
-    if (!req.query.secret === 'mysecret') {
-      return new Response('Unauthorized', { status: 401 });
-    }
-  },
-  req => {
-  // send text
-  return 'hello';
+tiny(router => {
+  router.get('/:key', req => req.params.key);
+})
+```
 
-  // send json
-  return { hello: 'world' };
+### router
 
-  // send a raw Response
-  return fetch(req.url);
+The router has four methods, all of which accept a string as the first parameter, and an arbitrary number of callbacks.
 
-  // send a Promise
-  return Promise.resolve('hello, world');
+The output to the client is the first return value from a callback that is a non-`undefined` value.
 
-  // path params
-  console.log(req.params.myParam);
+- **get(route: String, ...callbacks: Function)**
+- **post(route: String, ...callbacks: Function)**
+- **put(route: String, ...callbacks: Function)**
+- **del(route: String, ...callbacks: Function)**
 
-  // url search params
-  // req.url = https://example.com/?q1=one
-  console.log(req.query.q1);
+# Examples
+
+**Return String**
+
+```
+tiny(router => {
+  router.get('/someroute', req => {
+    return 'Hello, World!';
+  });
 });
 ```
 
-for routing documentation, see [path-to-regexp](https://github.com/pillarjs/path-to-regexp#readme)
+**Route Parameters + Query String**
+
+```
+// url: /myKey?p=1
+tiny(router => {
+  router.get('/:key', req => {
+    // outputs "myKey, 1"
+    return `${req.params.key}, ${req.query.p}`;
+  });
+});
+```
+
+**Return JSON**
+
+```
+tiny(router => {
+  router.get('/someroute', req => {
+    return { hello: 'world' };
+  });
+});
+```
+
+**Return A Promise**
+
+```
+tiny(router => {
+  router.get('/someroute', req => {
+    return Promise.resolve('hello, world');
+  });
+});
+```
+
+**Return A Response**
+
+```
+tiny(router => {
+  router.get('/someroute', req => {
+    return fetch(req.url);
+  });
+});
+```
+
+**Middleware**
+
+```
+tiny(router => {
+  router.get('/someroute',
+    req => {
+      req.intermediateValue = 'somevalue';
+
+      if (req.query.secret !== 'mysecret') {
+        return new Response('Unauthorized', { status: 401 });
+      }
+    },
+    req => {
+      return req.intermediateValue;
+    }
+  );
+});
+```
+
+for more in depth routing documentation, see [path-to-regexp](https://github.com/pillarjs/path-to-regexp#readme)
+
+# License
 
 Released under the MIT License
