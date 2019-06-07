@@ -16,9 +16,9 @@ there are two options:
 a function that expects a function as it's only parameter, and is passed an object containing the routing api.
 
 ```
-import tiny from '@helloandre/tiny'
+import tini from '@helloandre/tini'
 
-tiny(router => {
+tini(router => {
   router.get('/:key', req => req.params.key);
 })
 ```
@@ -41,7 +41,7 @@ For more in depth route path documentation, see [path-to-regexp](https://github.
 **Return String**
 
 ```
-tiny(router => {
+tini(router => {
   router.get('/someroute', req => {
     return 'Hello, World!';
   });
@@ -52,7 +52,7 @@ tiny(router => {
 
 ```
 // url: /myKey?p=1
-tiny(router => {
+tini(router => {
   router.get('/:key', req => {
     // outputs "myKey, 1"
     return `${req.params.key}, ${req.query.p}`;
@@ -63,7 +63,7 @@ tiny(router => {
 **Return JSON**
 
 ```
-tiny(router => {
+tini(router => {
   router.get('/someroute', req => {
     return { hello: 'world' };
   });
@@ -73,7 +73,7 @@ tiny(router => {
 **Return A Promise**
 
 ```
-tiny(router => {
+tini(router => {
   router.get('/someroute', req => {
     return Promise.resolve('hello, world');
   });
@@ -83,7 +83,7 @@ tiny(router => {
 **Return A Response**
 
 ```
-tiny(router => {
+tini(router => {
   router.get('/someroute', req => {
     return fetch(req.url);
   });
@@ -93,7 +93,7 @@ tiny(router => {
 **Middleware**
 
 ```
-tiny(router => {
+tini(router => {
   router.get('/someroute',
     req => {
       req.intermediateValue = 'somevalue';
@@ -111,4 +111,4 @@ tiny(router => {
 
 # License
 
-Released under the MIT License
+MIT
