@@ -22,7 +22,7 @@ let responses = {};
  *
  * @return {Promise<Response>}
  */
-const handle = req => {
+const handle = async req => {
   const routes = responses[req.method] || [];
   // fun fact: supported in node 11.x and Workers
   const url = new URL(req.url);
@@ -42,33 +42,31 @@ const handle = req => {
       // iterate through all the callbacks
       // returning the first non-null response
       for (const f of route.f) {
-        const result = f(req);
+        // resolve any promises first if res is a promise
+        const result = await Promise.resolve(f(req));
         if (result !== undefined) {
-          // resolve any promises first if res is a promise
           // support 3 types of values for res:
-          return Promise.resolve(result).then(res => {
-            // 1. Response
-            if (res instanceof R) {
-              return res;
-            }
+          // 1. Response
+          if (result instanceof R) {
+            return result;
+          }
 
-            // 2. String
-            if (typeof res === "string") {
-              return new R(res);
-            }
+          // 2. String
+          if (typeof result === "string") {
+            return new R(result);
+          }
 
-            // 3. JSON
-            const headers = new Headers();
-            headers.append("Content-Type", "application/json");
-            return new R(JSON.stringify(res), { headers });
-          });
+          // 3. JSON
+          const headers = new Headers();
+          headers.append("Content-Type", "application/json");
+          return new R(JSON.stringify(result), { headers });
         }
       }
     }
   }
 
   // fallback in case nothing matches this route
-  return Promise.resolve(new R("Not Found", { status: 404 }));
+  return new R("Not Found", { status: 404 });
 };
 
 /**
