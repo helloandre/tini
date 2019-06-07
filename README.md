@@ -1,6 +1,6 @@
 # Tini
 
-A tiny web framework
+A tiny web framework with zero dependencies
 
 # Installation
 
@@ -16,6 +16,8 @@ there are two options:
 a function that expects a function as it's only parameter, and is passed an object containing the routing api.
 
 ```
+import tiny from '@helloandre/tiny'
+
 tiny(router => {
   router.get('/:key', req => req.params.key);
 })
@@ -33,6 +35,8 @@ The output to the client is the first return value from a callback that is a non
 - **del(route: String, ...callbacks: Function)**
 
 # Examples
+
+For more in depth route path documentation, see [path-to-regexp](https://github.com/pillarjs/path-to-regexp#readme)
 
 **Return String**
 
@@ -104,8 +108,6 @@ tiny(router => {
   );
 });
 ```
-
-for more in depth routing documentation, see [path-to-regexp](https://github.com/pillarjs/path-to-regexp#readme)
 
 # License
 
