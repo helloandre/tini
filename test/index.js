@@ -34,8 +34,7 @@ const TEST_VERSIONS = [
 TEST_VERSIONS.forEach(tester => {
   describe(`tini ${tester.version}`, function() {
     beforeEach(function() {
-      // reset tini
-      tester.var.tini.responses = {};
+      global.forceAllowCallback = true;
 
       this.run = function(method, url) {
         tester.var.trigger("fetch", {
@@ -66,6 +65,39 @@ TEST_VERSIONS.forEach(tester => {
 
       return this.res.then(data => {
         expect(data.data).to.equal("one");
+      });
+    });
+
+    it("should initiate calbacks only once ever", function() {
+      let count = 0;
+      tester.var.tini(t => {
+        global.forceAllowCallback = false;
+        t.get("/test/:userId/:p?", req => req.query.q1);
+        count++;
+      });
+
+      this.run("GET", "https://andre.blue/test/firstParam/?q1=one");
+      this.run("GET", "https://andre.blue/test/firstParam/?q1=one");
+
+      return this.res.then(data => {
+        expect(data.data).to.equal("one");
+        expect(count).to.equal(1);
+      });
+    });
+
+    it("meta test: forceAllowCallback", function() {
+      let count = 0;
+      tester.var.tini(t => {
+        t.get("/test/:userId/:p?", req => req.query.q1);
+        count++;
+      });
+
+      this.run("GET", "https://andre.blue/test/firstParam/?q1=one");
+      this.run("GET", "https://andre.blue/test/firstParam/?q1=one");
+
+      return this.res.then(data => {
+        expect(data.data).to.equal("one");
+        expect(count).to.equal(2);
       });
     });
 
@@ -142,7 +174,11 @@ TEST_VERSIONS.forEach(tester => {
 
         it("should return early from middleware", function() {
           tester.var.tini(t => {
-            t[func]("/test/", req => "early", req => "late");
+            t[func](
+              "/test/",
+              req => "early",
+              req => "late"
+            );
           });
 
           this.run(verb, "https://andre.blue/test/one,two,three");

@@ -1,6 +1,6 @@
 {
   "name": "@helloandre/tini",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "A Tini Web Framework",
   "main": "dist/index.js",
   "repository": "github.com/helloandre/tini",

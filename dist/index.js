@@ -358,12 +358,20 @@ const api = {
   del: (route, ...cbs) => response("DELETE", route, cbs)
 };
 
+// keep track of if we've called the callback
+// because if the worker is kept around (i.e. not restarted)
+// we don't want to re-register all the responses
+let callbackCalled = false;
+
 /**
  * constructor - set up the addEventListener and route handlers
  */
 return callback => {
   addEventListener("fetch", event => {
-    callback(api);
+    if (!callbackCalled) {
+      callback(api);
+      callbackCalled = true;
+    }
     event.respondWith(handle(event.request));
   });
 };

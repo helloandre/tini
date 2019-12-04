@@ -26,3 +26,11 @@ function Response(data, opts) {
 }
 function Headers() {}
 Headers.prototype.append = () => {};
+
+$content;
+
+module.exports = {
+  tini,
+  trigger,
+  Response
+};
