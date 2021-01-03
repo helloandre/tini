@@ -22,7 +22,7 @@ let responses = {};
  *
  * @return {Promise<Response>}
  */
-const handle = async req => {
+const handle = async (req) => {
   const routes = responses[req.method] || [];
   // fun fact: supported in node 11.x and Workers
   const url = new URL(req.url);
@@ -89,7 +89,7 @@ const params = (matches, keys) => {
  *
  * @param {Object} searchParams
  */
-const query = searchParams => {
+const query = (searchParams) => {
   const query = {};
   for (const key of searchParams.keys()) {
     const vals = searchParams.getAll(key);
@@ -114,7 +114,7 @@ const response = (method, route, f) => {
     // callback function(s)
     f,
     // keys
-    k
+    k,
   });
 };
 
@@ -123,7 +123,8 @@ const api = {
   get: (route, ...cbs) => response("GET", route, cbs),
   post: (route, ...cbs) => response("POST", route, cbs),
   put: (route, ...cbs) => response("PUT", route, cbs),
-  del: (route, ...cbs) => response("DELETE", route, cbs)
+  del: (route, ...cbs) => response("DELETE", route, cbs),
+  use: (method, route, ...cbs) => response(method, route, cbs),
 };
 
 // keep track of if we've called the callback
@@ -134,8 +135,8 @@ let callbackCalled = false;
 /**
  * constructor - set up the addEventListener and route handlers
  */
-return callback => {
-  addEventListener("fetch", event => {
+return (callback) => {
+  addEventListener("fetch", (event) => {
     if (!callbackCalled) {
       callback(api);
       callbackCalled = true;

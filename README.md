@@ -33,6 +33,7 @@ The output to the client is the first return value from a callback that is a non
 - **post(route: String, ...callbacks: Function)**
 - **put(route: String, ...callbacks: Function)**
 - **del(route: String, ...callbacks: Function)**
+- **use(method: String, route: String, ...callbacks: Function)** - a generic catch all for any other methods you may need to support
 
 # Examples
 
