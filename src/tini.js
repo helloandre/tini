@@ -110,7 +110,7 @@ const response = (method, route, f) => {
   let k = [];
   responses[method] = (responses[method] || []).concat({
     // regex
-    r: p2r(route, k),
+    r: p2r(route, k, { end: true }),
     // callback function(s)
     f,
     // keys

@@ -193,10 +193,22 @@ TEST_VERSIONS.forEach((tester) => {
             );
           });
 
-          this.run(verb, "https://andre.blue/test/one,two,three");
+          this.run(verb, "https://andre.blue/test/");
 
           return this.res.then((data) => {
             expect(data.data).to.equal("early");
+          });
+        });
+
+        it("should not match subset path on 404", function () {
+          tester.var.tini((t) => {
+            t[func]("/test", () => "no");
+          });
+
+          this.run(verb, "https://andre.blue/test/one");
+
+          return this.res.then((data) => {
+            expect(data.data).to.equal("Not Found");
           });
         });
       });
