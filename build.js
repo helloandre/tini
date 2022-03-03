@@ -2,12 +2,10 @@ const fs = require("fs");
 const minify = require("babel-minify");
 
 const tini = fs.readFileSync("./src/tini.js", "utf8");
-const p2r = fs.readFileSync("./src/path-to-regex.js", "utf8");
 const wrapper = fs.readFileSync("./test/util/wrapper.js", "utf8");
 
 const tiniTemplate = `const tini = (function(){\n${tini}\n})();`;
-const p2rTemplate = `const p2r = (function(){\n${p2r}\n})();`;
-const combinedTemplate = `${p2rTemplate}\n${tiniTemplate}`;
+const combinedTemplate = `${tiniTemplate}`;
 const testTemplate = wrapper.replace(
   "$content;",
   combinedTemplate
