@@ -4,9 +4,6 @@ A tiny web framework with zero dependencies
 
 # Installation
 
-there are two options:
-
-- copy/paste `dist/index.min.js` directly into your code, which will expose the `tini` variable to your script
 - `npm i @helloandre/tini`
 
 # API
