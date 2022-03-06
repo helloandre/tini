@@ -7,29 +7,28 @@ Object.assign(global, env, {
   addEventListener: env.addEventListener.bind(env),
 });
 
-const tini = require("../dist/tini");
+const tini = require("../dist/tini").default;
 
 describe("tini", function () {
   beforeEach(function () {
-    this.router = new tini.Tini();
-    this.trigger = (req) =>
-      self.trigger("fetch", req).then((req) => req.json());
-    this.listen = () => {
-      addEventListener("fetch", (evt) => {
-        evt.respondWith(this.router._handle(evt.request));
+    return new Promise((resolve) => {
+      tini((router, t) => {
+        this.router = router;
+        this.tini = t;
+        this.get = (path, route, cb) => {
+          if (cb === undefined) {
+            this.router.get("(.*)", route);
+          } else {
+            this.router.get(route, cb);
+          }
+
+          return this.trigger(new Request(`http://example.com${path}`));
+        };
+        this.trigger = (req) =>
+          self.trigger("fetch", req).then((req) => req.json());
+        resolve();
       });
-    };
-    this.get = (path, route, cb) => {
-      if (cb === undefined) {
-        this.router.get("(.*)", route);
-      } else {
-        this.router.get(route, cb);
-      }
-
-      this.listen();
-
-      return this.trigger(new Request(`http://example.com${path}`));
-    };
+    });
   });
 
   afterEach(function () {
@@ -59,7 +58,6 @@ describe("tini", function () {
   });
 
   it("should fall through to next route", function () {
-    this.listen();
     this.router.use("GET", "/api", () => false);
     this.router.use("GET", "(.*)", () => true);
 
@@ -69,7 +67,6 @@ describe("tini", function () {
   });
 
   it("should fall through to next route, specific suburl", function () {
-    this.listen();
     this.router.get("/api", () => false);
     this.router.get("/api/one", () => false);
     this.router.get("/api/:id", (req) => req.params);
@@ -82,7 +79,6 @@ describe("tini", function () {
   });
 
   it("should not fall through to next route on different method", function () {
-    this.listen();
     this.router.get("/api", () => false);
     this.router.post("(.*)", () => false);
     this.router.get("(.*)", () => true);
@@ -99,7 +95,6 @@ describe("tini", function () {
   });
 
   it("should support returning a string", function () {
-    this.listen();
     this.router.get("(.*)", () => "TEST_STRING");
     self
       .trigger("fetch", new Request("http://example.com"))
@@ -110,7 +105,6 @@ describe("tini", function () {
   });
 
   it("should support returning a Response", function () {
-    this.listen();
     this.router.get(
       "(.*)",
       () =>
@@ -137,9 +131,20 @@ describe("tini", function () {
     );
   });
 
+  it("should default to 404", function () {
+    self
+      .trigger("fetch", new Request("http://example.com/"))
+      .then((res) => {
+        expect(res.status).to.equal(404);
+        return res.text();
+      })
+      .then((res) => {
+        expect(res).to.equal("Not Found");
+      });
+  });
+
   describe("middleware", function () {
     it("should support not returning anything, adding to request", function () {
-      this.listen();
       this.router.get(
         "(.*)",
         (req) => {
@@ -157,7 +162,6 @@ describe("tini", function () {
     });
 
     it("should support middleware returning early", function () {
-      this.listen();
       this.router.get(
         "(.*)",
         () => false,
@@ -170,13 +174,53 @@ describe("tini", function () {
     });
   });
 
-  describe("default behavior", function () {
-    it("should handle a 'fetch' event", function () {
-      tini.default((router) => {
-        router.get("(.*)", () => ({ success: true }));
+  describe("with", function () {
+    it("should support prefixing path", function () {
+      const router = this.tini.with("/api/v1");
+
+      router.get("/:id", (req) => req.params);
+      this.router.get("/not-an-api", () => ["TEST_NOT_API"]);
+
+      return Promise.all([
+        this.trigger(new Request("https://example.com/not-an-api")),
+        this.trigger(new Request("https://example.com/api/v1/1234")),
+      ]).then(([one, two]) => {
+        expect(one).to.deep.equal(["TEST_NOT_API"]);
+        expect(two).to.deep.equal({ id: "1234" });
       });
-      this.trigger(new Request("http://example.com")).then((res) => {
-        expect(res).to.deep.equal({ success: true });
+    });
+
+    it("should support running callbacks on all child paths", function () {
+      const router = this.tini.with("/api/v1", (req) => {
+        req.TEST_ALL = "TEST_ALL";
+      });
+
+      router.get(
+        "/:id",
+        (req) => {
+          req.TEST_GET = "TEST_GET";
+        },
+        (req) => [req.TEST_GET, req.TEST_ALL, req.params.id]
+      );
+      router.put(
+        "/:id",
+        (req) => {
+          req.TEST_PUT = "TEST_PUT";
+        },
+        (req) => [req.TEST_PUT, req.TEST_ALL, req.params.id]
+      );
+      this.router.get("/not-an-api", (req) => ["TEST_NOT_API"]);
+
+      return Promise.all([
+        this.trigger(new Request("https://example.com/not-an-api")),
+        this.trigger(new Request("https://example.com/api/v1/1234")),
+        this.trigger(
+          new Request("https://example.com/api/v1/1234", { method: "PUT" })
+        ),
+      ]).then(([one, two, three]) => {
+        expect(one).to.deep.equal(["TEST_NOT_API"]);
+        expect(two).to.deep.equal(["TEST_GET", "TEST_ALL", "1234"]);
+        expect(three).to.deep.equal(["TEST_PUT", "TEST_ALL", "1234"]);
       });
     });
   });

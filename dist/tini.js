@@ -1,15 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Tini = void 0;
 /**
  * Tini - A mini web framework to handle routing and response
  * specifically designed to work with Cloudflare Workers
  */
 const path_to_regexp_1 = require("path-to-regexp");
-;
-function tiniMatch(path) {
-    return (0, path_to_regexp_1.match)(path, { decode: decodeURIComponent });
-}
 ;
 /**
  * query - convert a URL.SearchParams object to a regular object
@@ -24,32 +19,52 @@ function query(searchParams) {
     return query;
 }
 ;
-class Tini {
-    constructor() {
-        this.responses = {};
+class TiniRouter {
+    constructor(prefix, callbacks) {
+        this.routes = {};
+        this.pathPrefix = "";
+        this.preCallbacks = [];
+        this.pathPrefix = prefix;
+        this.preCallbacks = callbacks;
     }
     /**
      * helpers to support "typical" use cases
      */
-    get(route, ...cbs) { this._addRoute("GET", route, cbs); }
-    post(route, ...cbs) { this._addRoute("POST", route, cbs); }
-    put(route, ...cbs) { this._addRoute("PUT", route, cbs); }
-    del(route, ...cbs) { this._addRoute("DELETE", route, cbs); }
+    get(route, ...callbacks) { this._addRoute("GET", route, callbacks); }
+    post(route, ...callbacks) { this._addRoute("POST", route, callbacks); }
+    put(route, ...callbacks) { this._addRoute("PUT", route, callbacks); }
+    del(route, ...callbacks) { this._addRoute("DELETE", route, callbacks); }
     /**
      * Poweruser method to support arbitrary HTTP methods
      */
-    use(method, route, ...cbs) { this._addRoute(method, route, cbs); }
+    use(method, route, ...callbacks) { this._addRoute(method, route, callbacks); }
+    /**
+     *
+     * @param method
+     * @param route
+     * @param callbacks
+     */
     _addRoute(method, route, callbacks) {
-        this.responses[method] = (this.responses[method] || []).concat({
-            matcher: tiniMatch(route),
-            callbacks,
+        this.routes[method] = (this.routes[method] || []).concat({
+            matcher: (0, path_to_regexp_1.match)(`${this.pathPrefix}${route}`, { decode: decodeURIComponent }),
+            callbacks: this.preCallbacks.concat(callbacks),
         });
+    }
+}
+class Tini {
+    constructor() {
+        this.routers = [];
+    }
+    with(prefix = "", ...callbacks) {
+        const router = new TiniRouter(prefix, callbacks);
+        this.routers.push(router);
+        return router;
     }
     /**
     * iterate through all routes registered and find the first matching one
     */
     async _handle(req) {
-        const routes = this.responses[req.method] || [];
+        const routes = this.routers.reduce((acc, r) => acc.concat(r.routes[req.method] || []), []);
         if (!routes.length) {
             return new Response("Not Found", { status: 404 });
         }
@@ -89,10 +104,9 @@ class Tini {
         }
     }
 }
-exports.Tini = Tini;
 exports.default = (callback) => {
     const tini = new Tini();
-    callback(tini);
+    callback(tini.with(), tini);
     addEventListener("fetch", (event) => {
         event.respondWith(tini._handle(event.request));
     });

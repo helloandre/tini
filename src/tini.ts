@@ -5,25 +5,20 @@
 import { match, MatchFunction } from "path-to-regexp";
 import { URLSearchParams } from "url";
 
-export type TiniRouter = (route: string, ...callbacks: Callback[]) => void;
-export type TiniRouterCallback = (router: InstanceType<typeof Tini>) => void;
+export type TiniRouterCallback = (router: InstanceType<typeof TiniRouter>, tini: InstanceType<typeof Tini>) => void;
 export interface TiniRequest extends Request {
   pathname: string,
   params: object,
   query: object,
 };
 
-export type Callback = (req: Request) => CallbackReturnValue;
+export type Callback = (req: TiniRequest) => CallbackReturnValue;
 export type CallbackReturnValue = InstanceType<typeof Response> | string | { success: boolean } | void;
 
-export type ResponseObj = {
+export type RouteObj = {
   matcher: MatchFunction,
   callbacks: Callback[]
 }
-
-function tiniMatch(path: string) {
-  return match(path, { decode: decodeURIComponent })
-};
 
 /**
  * query - convert a URL.SearchParams object to a regular object
@@ -38,34 +33,58 @@ function query(searchParams: URLSearchParams) {
   return query;
 };
 
-export class Tini {
-  responses: { [method: string]: ResponseObj[] } = {}
+class TiniRouter {
+  routes: { [method: string]: RouteObj[] } = {}
+  pathPrefix: string = ""
+  preCallbacks: Callback[] = []
+
+  constructor(prefix: string, callbacks: Callback[]) {
+    this.pathPrefix = prefix;
+    this.preCallbacks = callbacks;
+  }
 
   /**
    * helpers to support "typical" use cases
    */
-  get(route: string, ...cbs: Callback[]) { this._addRoute("GET", route, cbs) }
-  post(route: string, ...cbs: Callback[]) { this._addRoute("POST", route, cbs) }
-  put(route: string, ...cbs: Callback[]) { this._addRoute("PUT", route, cbs) }
-  del(route: string, ...cbs: Callback[]) { this._addRoute("DELETE", route, cbs) }
+  get(route: string, ...callbacks: Callback[]) { this._addRoute("GET", route, callbacks) }
+  post(route: string, ...callbacks: Callback[]) { this._addRoute("POST", route, callbacks) }
+  put(route: string, ...callbacks: Callback[]) { this._addRoute("PUT", route, callbacks) }
+  del(route: string, ...callbacks: Callback[]) { this._addRoute("DELETE", route, callbacks) }
 
   /**
    * Poweruser method to support arbitrary HTTP methods
    */
-  use(method: string, route: string, ...cbs: Callback[]) { this._addRoute(method, route, cbs) }
+  use(method: string, route: string, ...callbacks: Callback[]) { this._addRoute(method, route, callbacks) }
+
+  /**
+   * 
+   * @param method 
+   * @param route 
+   * @param callbacks 
+   */
 
   _addRoute(method: string, route: string, callbacks: Callback[]) {
-    this.responses[method] = (this.responses[method] || []).concat({
-      matcher: tiniMatch(route),
-      callbacks,
+    this.routes[method] = (this.routes[method] || []).concat({
+      matcher: match(`${this.pathPrefix}${route}`, { decode: decodeURIComponent }),
+      callbacks: this.preCallbacks.concat(callbacks),
     });
+  }
+}
+
+class Tini {
+  routers: TiniRouter[] = [];
+
+  with(prefix: string = "", ...callbacks: Callback[]) {
+    const router = new TiniRouter(prefix, callbacks);
+    this.routers.push(router);
+    return router;
   }
 
   /**
   * iterate through all routes registered and find the first matching one
   */
   async _handle(req: TiniRequest): Promise<Response> {
-    const routes = this.responses[req.method] || [];
+    const routes = this.routers.reduce((acc, r) => acc.concat(r.routes[req.method] || []), []);
 
     if (!routes.length) {
       return new Response("Not Found", { status: 404 });
@@ -115,7 +134,7 @@ export class Tini {
 
 export default (callback: TiniRouterCallback) => {
   const tini = new Tini();
-  callback(tini);
+  callback(tini.with(), tini);
   addEventListener("fetch", (event: FetchEvent) => {
     event.respondWith(tini._handle(event.request as TiniRequest));
   });

@@ -3,37 +3,49 @@
  * specifically designed to work with Cloudflare Workers
  */
 import { MatchFunction } from "path-to-regexp";
-export declare type TiniRouter = (route: string, ...callbacks: Callback[]) => void;
-export declare type TiniRouterCallback = (router: InstanceType<typeof Tini>) => void;
+export declare type TiniRouterCallback = (router: InstanceType<typeof TiniRouter>, tini: InstanceType<typeof Tini>) => void;
 export interface TiniRequest extends Request {
     pathname: string;
     params: object;
     query: object;
 }
-export declare type Callback = (req: Request) => CallbackReturnValue;
+export declare type Callback = (req: TiniRequest) => CallbackReturnValue;
 export declare type CallbackReturnValue = InstanceType<typeof Response> | string | {
     success: boolean;
 } | void;
-export declare type ResponseObj = {
+export declare type RouteObj = {
     matcher: MatchFunction;
     callbacks: Callback[];
 };
-export declare class Tini {
-    responses: {
-        [method: string]: ResponseObj[];
+declare class TiniRouter {
+    routes: {
+        [method: string]: RouteObj[];
     };
+    pathPrefix: string;
+    preCallbacks: Callback[];
+    constructor(prefix: string, callbacks: Callback[]);
     /**
      * helpers to support "typical" use cases
      */
-    get(route: string, ...cbs: Callback[]): void;
-    post(route: string, ...cbs: Callback[]): void;
-    put(route: string, ...cbs: Callback[]): void;
-    del(route: string, ...cbs: Callback[]): void;
+    get(route: string, ...callbacks: Callback[]): void;
+    post(route: string, ...callbacks: Callback[]): void;
+    put(route: string, ...callbacks: Callback[]): void;
+    del(route: string, ...callbacks: Callback[]): void;
     /**
      * Poweruser method to support arbitrary HTTP methods
      */
-    use(method: string, route: string, ...cbs: Callback[]): void;
+    use(method: string, route: string, ...callbacks: Callback[]): void;
+    /**
+     *
+     * @param method
+     * @param route
+     * @param callbacks
+     */
     _addRoute(method: string, route: string, callbacks: Callback[]): void;
+}
+declare class Tini {
+    routers: TiniRouter[];
+    with(prefix?: string, ...callbacks: Callback[]): TiniRouter;
     /**
     * iterate through all routes registered and find the first matching one
     */
