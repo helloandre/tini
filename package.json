@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -d",
-    "test": "mocha test/tini.js --exit"
+    "test": "mocha test/index.js --exit"
   },
   "devDependencies": {
     "@types/node": "^17.0.21",

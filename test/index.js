@@ -7,7 +7,7 @@ Object.assign(global, env, {
   addEventListener: env.addEventListener.bind(env),
 });
 
-const tini = require("../dist/tini").default;
+const tini = require("../dist/index").default;
 
 describe("tini", function () {
   beforeEach(function () {
