@@ -112,8 +112,10 @@ tini(router => {
 **Nested Routers**
 
 ```
+import tini, { Router } from '@helloandre/tini'
+
 tini(router => {
-  const api = new TiniRouter(`/api/v1`);
+  const api = new Router(`/api/v1`);
   api.get('/:name', (req) => ({ params: req.params, query: req.query }));
   router.with(api);
 
