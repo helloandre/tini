@@ -1,17 +1,14 @@
 # Tini
 
-A tiny web framework with zero dependencies
+A tiny web framework
 
 # Installation
 
-there are two options:
-
-- copy/paste `dist/index.min.js` directly into your code, which will expose the `tini` variable to your script
 - `npm i @helloandre/tini`
 
 # API
 
-### tini(fn)
+## tini(fn)
 
 a function that expects a function as it's only parameter, and is passed an object containing the routing api.
 
@@ -23,17 +20,19 @@ tini(router => {
 })
 ```
 
-### router
+## Router
 
-The router has four methods, all of which accept a string as the first parameter, and an arbitrary number of callbacks.
+### Convenience methods
 
-The output to the client is the first return value from a callback that is a non-`undefined` value.
+- **get(route: string, ...callbacks: Function)**
+- **post(route: string, ...callbacks: Function)**
+- **put(route: string, ...callbacks: Function)**
+- **del(route: string, ...callbacks: Function)**
+- **route(method: string, route: string, ...callbacks: Function)** - a generic catch all for any other methods you may need to support
 
-- **get(route: String, ...callbacks: Function)**
-- **post(route: String, ...callbacks: Function)**
-- **put(route: String, ...callbacks: Function)**
-- **del(route: String, ...callbacks: Function)**
-- **use(method: String, route: String, ...callbacks: Function)** - a generic catch all for any other methods you may need to support
+### Nested Routers
+
+- **with(router: Router)**
 
 # Examples
 
@@ -86,7 +85,7 @@ tini(router => {
 ```
 tini(router => {
   router.get('/someroute', req => {
-    return fetch(req.url);
+    return new Response("Not Found", { status: 404 });
   });
 });
 ```
@@ -107,6 +106,18 @@ tini(router => {
       return req.intermediateValue;
     }
   );
+});
+```
+
+**Nested Routers**
+
+```
+tini(router => {
+  const api = new TiniRouter(`/api/v1`);
+  api.get('/:name', (req) => ({ params: req.params, query: req.query }));
+  router.with(api);
+
+  router.get('(.*)', () => new Response("Not Found", { status: 404 }));
 });
 ```
 

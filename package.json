@@ -1,19 +1,25 @@
 {
   "name": "@helloandre/tini",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A Tini Web Framework",
   "main": "dist/index.js",
   "repository": "github.com/helloandre/tini",
   "author": "Andre Bluehs <hello@andre.blue>",
   "license": "MIT",
   "scripts": {
-    "build": "node build.js",
-    "size": "ls -la dist/index.min.js",
-    "test": "yarn build && yarn size && mocha test/index.js --exit"
+    "build": "tsc -d",
+    "test": "mocha test/index.js --exit",
+    "prepack": "npm run build",
+    "pretest": "npm run build"
   },
   "devDependencies": {
-    "babel-minify": "^0.5.0",
+    "@types/node": "^17.0.21",
     "chai": "^4.2.0",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "service-worker-mock": "^2.0.5",
+    "typescript": "^4.6.2"
+  },
+  "dependencies": {
+    "path-to-regexp": "^6.2.0"
   }
 }
