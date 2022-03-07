@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Router = void 0;
 /**
  * Tini - A mini web framework to handle routing and response
  * specifically designed to work with Cloudflare Workers
@@ -19,9 +20,9 @@ function query(searchParams) {
     return query;
 }
 ;
-class TiniRouter {
-    constructor(prefix, callbacks) {
-        this.routes = {};
+class Router {
+    constructor(prefix, ...callbacks) {
+        this.routes = [];
         this.pathPrefix = "";
         this.preCallbacks = [];
         this.pathPrefix = prefix;
@@ -37,34 +38,57 @@ class TiniRouter {
     /**
      * Poweruser method to support arbitrary HTTP methods
      */
-    use(method, route, ...callbacks) { this._addRoute(method, route, callbacks); }
+    route(method, route, ...callbacks) { this._addRoute(method, route, callbacks); }
     /**
+     * add a recursive router
      *
-     * @param method
-     * @param route
-     * @param callbacks
+     * @param router
      */
+    with(router) {
+        this.routes.push(router);
+    }
+    /**
+     * flatten any nested Router routes
+     */
+    calculateRoutes() {
+        const routes = {};
+        for (const route of this.routes) {
+            if (route instanceof Router) {
+                const nested = route.calculateRoutes();
+                for (const method of Object.keys(nested)) {
+                    routes[method] = (routes[method] || []).concat(nested[method]);
+                }
+            }
+            else {
+                routes[route.method] = (routes[route.method] || []).concat({
+                    matcher: route.matcher,
+                    callbacks: route.callbacks
+                });
+            }
+        }
+        return routes;
+    }
     _addRoute(method, route, callbacks) {
-        this.routes[method] = (this.routes[method] || []).concat({
+        this.routes.push({
+            method,
             matcher: (0, path_to_regexp_1.match)(`${this.pathPrefix}${route}`, { decode: decodeURIComponent }),
             callbacks: this.preCallbacks.concat(callbacks),
         });
     }
 }
+exports.Router = Router;
 class Tini {
     constructor() {
-        this.routers = [];
+        this.router = new Router("");
     }
-    with(prefix = "", ...callbacks) {
-        const router = new TiniRouter(prefix, callbacks);
-        this.routers.push(router);
-        return router;
+    calculateRoutes() {
+        this.routes = this.router.calculateRoutes();
     }
     /**
     * iterate through all routes registered and find the first matching one
     */
     async _handle(req) {
-        const routes = this.routers.reduce((acc, r) => acc.concat(r.routes[req.method] || []), []);
+        const routes = this.routes[req.method] || [];
         if (!routes.length) {
             return new Response("Not Found", { status: 404 });
         }
@@ -106,7 +130,8 @@ class Tini {
 }
 exports.default = (callback) => {
     const tini = new Tini();
-    callback(tini.with(), tini);
+    callback(tini.router);
+    tini.calculateRoutes();
     addEventListener("fetch", (event) => {
         event.respondWith(tini._handle(event.request));
     });

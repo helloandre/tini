@@ -5,7 +5,7 @@
 import { match, MatchFunction } from "path-to-regexp";
 import { URLSearchParams } from "url";
 
-export type TiniRouterCallback = (router: InstanceType<typeof TiniRouter>, tini: InstanceType<typeof Tini>) => void;
+export type TiniRouterCallback = (router: InstanceType<typeof Router>) => void;
 export interface TiniRequest extends Request {
   pathname: string,
   params: object,
@@ -13,12 +13,21 @@ export interface TiniRequest extends Request {
 };
 
 export type Callback = (req: TiniRequest) => CallbackReturnValue;
-export type CallbackReturnValue = InstanceType<typeof Response> | string | { success: boolean } | void;
+export type CallbackReturnValue = InstanceType<typeof Response> | string | object | void;
 
-export type RouteObj = {
+type TiniRouterRoute = Router | {
+  method: string,
   matcher: MatchFunction,
   callbacks: Callback[]
 }
+type TiniRoute = {
+  matcher: MatchFunction,
+  callbacks: Callback[]
+}
+type CalculatedRoutes = {
+  [method: string]: TiniRoute[]
+}
+
 
 /**
  * query - convert a URL.SearchParams object to a regular object
@@ -33,12 +42,12 @@ function query(searchParams: URLSearchParams) {
   return query;
 };
 
-class TiniRouter {
-  routes: { [method: string]: RouteObj[] } = {}
-  pathPrefix: string = ""
-  preCallbacks: Callback[] = []
+export class Router {
+  private routes: TiniRouterRoute[] = []
+  private pathPrefix: string = ""
+  private preCallbacks: Callback[] = []
 
-  constructor(prefix: string, callbacks: Callback[]) {
+  constructor(prefix: string, ...callbacks: Callback[]) {
     this.pathPrefix = prefix;
     this.preCallbacks = callbacks;
   }
@@ -54,17 +63,44 @@ class TiniRouter {
   /**
    * Poweruser method to support arbitrary HTTP methods
    */
-  use(method: string, route: string, ...callbacks: Callback[]) { this._addRoute(method, route, callbacks) }
+  route(method: string, route: string, ...callbacks: Callback[]) { this._addRoute(method, route, callbacks) }
 
   /**
+   * add a recursive router
    * 
-   * @param method 
-   * @param route 
-   * @param callbacks 
+   * @param router 
    */
+  with(router: Router) {
+    this.routes.push(router);
+  }
 
-  _addRoute(method: string, route: string, callbacks: Callback[]) {
-    this.routes[method] = (this.routes[method] || []).concat({
+  /**
+   * flatten any nested Router routes
+   */
+  calculateRoutes(): CalculatedRoutes {
+    const routes: CalculatedRoutes = {};
+
+    for (const route of this.routes) {
+      if (route instanceof Router) {
+        const nested = route.calculateRoutes();
+
+        for (const method of Object.keys(nested)) {
+          routes[method] = (routes[method] || []).concat(nested[method])
+        }
+      } else {
+        routes[route.method] = (routes[route.method] || []).concat({
+          matcher: route.matcher,
+          callbacks: route.callbacks
+        })
+      }
+    }
+
+    return routes;
+  }
+
+  private _addRoute(method: string, route: string, callbacks: Callback[]) {
+    this.routes.push({
+      method,
       matcher: match(`${this.pathPrefix}${route}`, { decode: decodeURIComponent }),
       callbacks: this.preCallbacks.concat(callbacks),
     });
@@ -72,19 +108,22 @@ class TiniRouter {
 }
 
 class Tini {
-  routers: TiniRouter[] = [];
+  router: Router;
+  routes: CalculatedRoutes;
 
-  with(prefix: string = "", ...callbacks: Callback[]) {
-    const router = new TiniRouter(prefix, callbacks);
-    this.routers.push(router);
-    return router;
+  constructor() {
+    this.router = new Router("");
+  }
+
+  calculateRoutes() {
+    this.routes = this.router.calculateRoutes();
   }
 
   /**
   * iterate through all routes registered and find the first matching one
   */
   async _handle(req: TiniRequest): Promise<Response> {
-    const routes = this.routers.reduce((acc, r) => acc.concat(r.routes[req.method] || []), []);
+    const routes = this.routes[req.method] || [];
 
     if (!routes.length) {
       return new Response("Not Found", { status: 404 });
@@ -134,7 +173,8 @@ class Tini {
 
 export default (callback: TiniRouterCallback) => {
   const tini = new Tini();
-  callback(tini.with(), tini);
+  callback(tini.router);
+  tini.calculateRoutes();
   addEventListener("fetch", (event: FetchEvent) => {
     event.respondWith(tini._handle(event.request as TiniRequest));
   });

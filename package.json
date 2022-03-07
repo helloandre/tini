@@ -8,7 +8,9 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -d",
-    "test": "mocha test/index.js --exit"
+    "test": "mocha test/index.js --exit",
+    "prepack": "npm run build",
+    "pretest": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^17.0.21",
